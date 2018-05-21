@@ -1,5 +1,7 @@
 package com.huawei.hookleak.leakcarany;
 
+import android.util.Log;
+
 import java.lang.ref.ReferenceQueue;
 import java.util.Set;
 import java.util.UUID;
@@ -66,6 +68,7 @@ public class ReftWatcher {
 
 
             XposedBridge.log(reference.name + "发生内存泄露");
+            Log.e("tag","HPROF_ATN:"+reference.name+",HPROF_KEY"+reference.key+",HPROF_VALUE:"+reference.name);
 
 //            File heapDumpFile = heapDumper.dumpHeap();
 //            if (heapDumpFile == RETRY_LATER) {

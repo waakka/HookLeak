@@ -34,7 +34,6 @@ public class MainHook implements IXposedHookLoadPackage {
 
 
                         Activity activity = (Activity) param.thisObject;
-                        Application application = activity.getApplication();
                         Context context = activity;
                         String activityName = activity.getClass().getName();
 
