@@ -1,7 +1,12 @@
 package com.huawei.hookleak.leakcarany;
 
+import android.os.Debug;
 import android.util.Log;
 
+import com.huawei.hookleak.FileUtil;
+
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.util.Set;
 import java.util.UUID;
@@ -31,7 +36,7 @@ public class ReftWatcher {
         retainedKeys.add(key);
         final KeyedWeakReference reference =
                 new KeyedWeakReference(watchedReference, key, referenceName, queue);
-
+        XposedBridge.log("本次检测"+referenceName+",key="+reference.key);
         ensureGoneAsync(watchStartNanoTime, reference);
     }
 
@@ -67,10 +72,15 @@ public class ReftWatcher {
             //TODO  发现内存泄露，需要heapDump
 
 
-            XposedBridge.log(reference.name + "发生内存泄露");
-            Log.e("tag","HPROF_ATN:"+reference.name+",HPROF_KEY"+reference.key+",HPROF_VALUE:"+reference.name);
+            XposedBridge.log("HPROF_ATN:"+reference.name+",HPROF_KEY:"+reference.key+",HPROF_VALUE:"+reference.name);
 
-//            File heapDumpFile = heapDumper.dumpHeap();
+            File file = FileUtil.getHprofFile(reference.name);
+            try {
+                Debug.dumpHprofData(file.getAbsolutePath());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+////            File heapDumpFile = heapDumper.dumpHeap();
 //            if (heapDumpFile == RETRY_LATER) {
 //                // Could not dump the heap.
 //                return RETRY;
