@@ -22,11 +22,17 @@ import de.robv.android.xposed.XposedBridge;
 
 public class FileUtil {
 
-    public static final String TAG = "autoConsume";
+    public static final String TAG = "hookLog";
+
+
+    public static void showLog(String msg){
+        XposedBridge.log(msg);
+        Log.e(TAG,msg);
+    }
 
 
 
-
+    //解析配置文件
     public static ConfigBeen getConfigBeen(){
         File file = new File("sdcard/TraverseConfig.txt");
         String configStr = getStrFromFile(file);
@@ -35,36 +41,40 @@ public class FileUtil {
             try {
                 JSONObject jsonObject = new JSONObject(configStr);
                 configBeen.setPackageName(jsonObject.getString("packageName"));
-                JSONObject loginObj = jsonObject.getJSONObject("login");
-                JSONArray loginCfgObj = loginObj.getJSONArray("loginCfg");
-                for (int i = 0 ; i < loginCfgObj.length() ; i++){
-                    JSONObject o = loginCfgObj.getJSONObject(i);
-                    String execSeq = o.getString("execSeq");
-                    if (execSeq.equals("4")){
-                        String loginBtnId = o.getString("loginBtnId");
-                        String widgetType = o.getString("widgetType");
-                        if (widgetType.equals("1")){
-                            configBeen.setLoginRecId(unescapeJava(loginBtnId));
-                        }else{
-                            configBeen.setLoginDesc(loginBtnId);
+                if (!configStr.contains("\"login\":null")){
+                    //需要登录
+                    JSONObject loginObj = jsonObject.getJSONObject("login");
+                    JSONArray loginCfgObj = loginObj.getJSONArray("loginCfg");
+                    for (int i = 0 ; i < loginCfgObj.length() ; i++){
+                        JSONObject o = loginCfgObj.getJSONObject(i);
+                        String execSeq = o.getString("execSeq");
+                        if (execSeq.equals("4")){
+                            String loginBtnId = o.getString("loginBtnId");
+                            String widgetType = o.getString("widgetType");
+                            if (widgetType.equals("1")){
+                                configBeen.setLoginRecId(unescapeJava(loginBtnId));
+                            }else{
+                                configBeen.setLoginDesc(loginBtnId);
+                            }
                         }
                     }
                 }
-                XposedBridge.log("解析得当前配置文件：" + configBeen.toString());
+                FileUtil.showLog("解析得当前配置文件：" + configBeen.toString());
             } catch (JSONException e) {
                 e.printStackTrace();
-                XposedBridge.log(e.getMessage());
+                FileUtil.showLog(e.getMessage());
             } catch (IOException e) {
                 e.printStackTrace();
+                FileUtil.showLog(e.getMessage());
             }
         }else{
-            configBeen.setPackageName("com.waakka.login");
+//            configBeen.setPackageName("com.waakka.login");
 //            XposedBridge.log("配置文件为空：" + configBeen.toString());
         }
         return configBeen;
     }
 
-
+    //获取Hprof文件路径
     public static File getHprofFile(String name){
         String path1 = Environment.getExternalStorageDirectory() + "/u2test";
         String path2 = path1 + "/hprof";
@@ -74,26 +84,26 @@ public class FileUtil {
         File logFile = new File(pathHprof);
         if (!file1.exists()){
             file1.mkdirs();
-//                XposedBridge.log("创建文件夹成功 file1=" + file1.getAbsolutePath());
+            FileUtil.showLog("创建文件夹成功 file1=" + file1.getAbsolutePath());
         }
         if (!file2.exists()){
             file2.mkdirs();
-//                XposedBridge.log("创建文件夹成功 file2=" + file2.getAbsolutePath());
+            FileUtil.showLog("创建文件夹成功 file2=" + file2.getAbsolutePath());
         }
         if (logFile.exists()){
             logFile.delete();
         }
         try {
             logFile.createNewFile();
-//                XposedBridge.log("创建文件成功 logFile=" + logFile.getAbsolutePath());
+            FileUtil.showLog("创建文件成功 logFile=" + logFile.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
-//                XposedBridge.log("创建文件失败 " + e.getMessage());
+            FileUtil.showLog("创建文件失败 " + e.getMessage());
         }
         return logFile;
     }
 
-
+    //获取log日志文件路径
     public static File getLogFile(){
         String path1 = Environment.getExternalStorageDirectory() + "/u2test";
         String path2 = path1 + "/UiAutomation";
@@ -105,18 +115,18 @@ public class FileUtil {
             XposedBridge.log("文件不存在，创建文件夹及文件");
             if (!file1.exists()){
                 file1.mkdirs();
-                XposedBridge.log("创建文件夹成功 file1=" + file1.getAbsolutePath());
+                FileUtil.showLog("创建文件夹成功 file1=" + file1.getAbsolutePath());
             }
             if (!file2.exists()){
                 file2.mkdirs();
-                XposedBridge.log("创建文件夹成功 file2=" + file2.getAbsolutePath());
+                FileUtil.showLog("创建文件夹成功 file2=" + file2.getAbsolutePath());
             }
             try {
                 logFile.createNewFile();
-                XposedBridge.log("创建文件成功 logFile=" + logFile.getAbsolutePath());
+                FileUtil.showLog("创建文件成功 logFile=" + logFile.getAbsolutePath());
             } catch (IOException e) {
                 e.printStackTrace();
-                XposedBridge.log("创建文件失败 " + e.getMessage());
+                FileUtil.showLog("创建文件失败 " + e.getMessage());
             }
         }
         return logFile;
@@ -145,24 +155,20 @@ public class FileUtil {
                 }
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
-                XposedBridge.log(e.getMessage());
-                Log.e(TAG,e.getMessage());
+                FileUtil.showLog("未找到配置文件==>" + e.getMessage());
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
-                XposedBridge.log(e.getMessage());
-                Log.e(TAG,e.getMessage());
+                FileUtil.showLog(e.getMessage());
             } catch (IOException e) {
                 e.printStackTrace();
-                XposedBridge.log(e.getMessage());
-                Log.e(TAG,e.getMessage());
+                FileUtil.showLog(e.getMessage());
             } finally {
                 if (reader != null){
                     try {
                         reader.close();
                     } catch (IOException e) {
                         e.printStackTrace();
-                        XposedBridge.log(e.getMessage());
-                        Log.e(TAG,e.getMessage());
+                        FileUtil.showLog(e.getMessage());
                     }
                     reader = null;
                 }
@@ -171,8 +177,7 @@ public class FileUtil {
                         isr.close();
                     } catch (IOException e) {
                         e.printStackTrace();
-                        XposedBridge.log(e.getMessage());
-                        Log.e(TAG,e.getMessage());
+                        FileUtil.showLog(e.getMessage());
                     }
                     isr = null;
                 }
@@ -181,8 +186,7 @@ public class FileUtil {
                         fis.close();
                     } catch (IOException e) {
                         e.printStackTrace();
-                        XposedBridge.log(e.getMessage());
-                        Log.e(TAG,e.getMessage());
+                        FileUtil.showLog(e.getMessage());
                     }
                     fis = null;
                 }

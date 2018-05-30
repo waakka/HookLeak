@@ -52,13 +52,32 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private String loginActivityName;
 
+
+    private String curPackageName = "";
+
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
 
-        configBeen = FileUtil.getConfigBeen();
-        if (!lpparam.packageName.equalsIgnoreCase(configBeen.getPackageName())){
-//            XposedBridge.log("包名不符，配置包名："+ configBeen.getPackageName() +"当前包名："+lpparam.packageName);
+        //当前curPackageName为空，第一次解析配置文件
+        if (TextUtils.isEmpty(curPackageName)){
+            FileUtil.showLog("当前curPackageName为空，开始解析配置文件");
+            configBeen = FileUtil.getConfigBeen();
+            curPackageName = configBeen.getPackageName();
+        }
+        //包名不符，配置文件可能发生变更，重新解析配置文件
+        if(!lpparam.packageName.equalsIgnoreCase(curPackageName)){
+            FileUtil.showLog("包名不符，配置包名："+ curPackageName +"当前事件包名："+lpparam.packageName);
+            configBeen = FileUtil.getConfigBeen();
+            curPackageName = configBeen.getPackageName();
+        }else{
+            FileUtil.showLog("包名符合，开始hook");
+        }
+        //经过重新解析配置文件后，包名依然不符合，退出当前事件流
+        if (!lpparam.packageName.equalsIgnoreCase(curPackageName)){
+            FileUtil.showLog("再次解析后，包名不符，配置包名："+ curPackageName +"当前事件包名："+lpparam.packageName + "退出当前事件流");
             return;
+        }else{
+            FileUtil.showLog("再次解析后，包名符合，开始hook");
         }
 
 
@@ -66,13 +85,13 @@ public class MainHook implements IXposedHookLoadPackage {
                 "onDestroy", new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-
+                        FileUtil.showLog("本次事件===>onDestroy");
 
                         Activity activity = (Activity) param.thisObject;
                         Context context = activity;
                         String activityName = activity.getClass().getName();
 
-                        XposedBridge.log("hook_"+(++count)+"==onDestroy==>activityName:" + activityName);
+                        FileUtil.showLog("hook_"+(++count)+"==onDestroy==>activityName:" + activityName);
 
                         watcher.watch(context,activityName);
 
@@ -96,6 +115,7 @@ public class MainHook implements IXposedHookLoadPackage {
                 "dispatchTouchEvent", MotionEvent.class,new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        FileUtil.showLog("本次事件===>dispatchTouchEvent");
                         MotionEvent event = (MotionEvent) param.args[0];
                         int action = event.getAction();
                         switch(action) {
@@ -110,29 +130,34 @@ public class MainHook implements IXposedHookLoadPackage {
                                 String resourceName = resources.getResourceName(view.getId());
                                 if (!TextUtils.isEmpty(configBeen.getLoginRecId()) && !TextUtils.isEmpty(resourceName)){
                                     if (configBeen.getLoginRecId().equalsIgnoreCase(resourceName)){
-                                        XposedBridge.log("本次操作控件符合登录按钮特征，属登录操作，resourceName = " + resourceName);
+                                        FileUtil.showLog("本次操作控件符合登录按钮特征，属登录操作，resourceName = " + resourceName);
                                         type = TYPE_LOGIN;
                                         //如果当前操作控件是登录控件，则当前界面是登录界面
                                         loginActivityName = lastActivityName;
                                     }
                                 }
 
-                                TextView tv = (TextView) view;
-                                //强转view为TextView获取控件的text及description
-                                if(tv!=null){
-                                    CharSequence contentDescription = tv.getContentDescription();
-                                    if(!TextUtils.isEmpty(contentDescription) && !contentDescription.equals("null")){
-                                        XposedBridge.log("本次操作控件的contentDescription = " + contentDescription);
-                                    }
-                                    CharSequence text = tv.getText();
-                                    if (!TextUtils.isEmpty(configBeen.getLoginDesc()) && text != null){
-                                        XposedBridge.log("本次操作控件符合登录按钮特征，属登录操作，text = " + text);
-                                        if (configBeen.getLoginDesc().equalsIgnoreCase(text.toString())){
-                                            type = TYPE_LOGIN;
-                                            //如果当前操作控件是登录控件，则当前界面是登录界面
-                                            loginActivityName = lastActivityName;
+                                try {
+                                    TextView tv = (TextView) view;
+                                    //强转view为TextView获取控件的text及description
+                                    if(tv!=null){
+                                        CharSequence contentDescription = tv.getContentDescription();
+                                        if(!TextUtils.isEmpty(contentDescription) && !contentDescription.equals("null")){
+                                            XposedBridge.log("本次操作控件的contentDescription = " + contentDescription);
+                                        }
+                                        CharSequence text = tv.getText();
+                                        if (!TextUtils.isEmpty(configBeen.getLoginDesc()) && text != null){
+                                            FileUtil.showLog("本次操作控件符合登录按钮特征，属登录操作，text = " + text);
+                                            if (configBeen.getLoginDesc().equalsIgnoreCase(text.toString())){
+                                                type = TYPE_LOGIN;
+                                                //如果当前操作控件是登录控件，则当前界面是登录界面
+                                                loginActivityName = lastActivityName;
+                                            }
                                         }
                                     }
+                                }catch (Exception e){
+                                    e.printStackTrace();
+                                    FileUtil.showLog("控件不能强转为TextView:" + e.getMessage());
                                 }
                                 lastClickTime = System.currentTimeMillis();
                                 break;
@@ -147,9 +172,10 @@ public class MainHook implements IXposedHookLoadPackage {
                 "onStart", new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        FileUtil.showLog("本次事件===>onStart");
                         Activity activity = (Activity) param.thisObject;
                         String activityName = activity.getClass().getName();
-                        XposedBridge.log("****************" + ConsumeUtil.getCurTimeStr() + "***"
+                        FileUtil.showLog("****************" + ConsumeUtil.getCurTimeStr() + "***"
                                 + activityName+"调用onStart方法 ");
                         // 记录当前时间
                         curTime = System.currentTimeMillis();
@@ -169,8 +195,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                 consume.setStoptActivity(curActivityName);
                                 consume.setStopTime(curTime);
                                 consume.setType(-1);
-                                XposedBridge.log("当前界面"+activityName+"发生onStart，未记录点击信息，为back、home等未知操作导致");
-                                ConsumeUtil.showLog(consume.toString());
+                                FileUtil.showLog("当前界面"+activityName+"发生onStart，未记录点击信息，为back、home等未知操作导致");
+                                ConsumeUtil.write(consume.toString());
                             }else{
                                 Consume consume = new Consume();
                                 consume.setStartActivity(lastActivityName);
@@ -183,10 +209,10 @@ public class MainHook implements IXposedHookLoadPackage {
                                         &&!TextUtils.isEmpty(loginActivityName)
                                         &&lastActivityName.equals(loginActivityName)){
                                     //如果上个界面是登录界面并且当前界面不等于登录界面则认为当前属于登录数据
-                                    XposedBridge.log("上个界面是登录界面并且当前界面不等于登录界面则认为当前属于登录数据");
+                                    FileUtil.showLog("上个界面是登录界面并且当前界面不等于登录界面则认为当前属于登录数据");
                                     consume.setType(TYPE_LOGIN);
                                 }
-                                ConsumeUtil.showLog(consume.toString());
+                                ConsumeUtil.write(consume.toString());
                             }
                             lastActivityName = curActivityName;
                         }

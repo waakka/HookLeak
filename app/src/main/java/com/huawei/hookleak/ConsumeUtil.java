@@ -21,10 +21,6 @@ public class ConsumeUtil {
     }
 
 
-    public static void showLog(String msg){
-        XposedBridge.log(msg);
-        write(msg);
-    }
 
     public static void write(String msg){
         FileOutputStream fos = null;
@@ -35,13 +31,14 @@ public class ConsumeUtil {
             bw = new BufferedWriter(new OutputStreamWriter(fos));
             bw.write(msg);
             bw.flush();
-            XposedBridge.log("===================成功写入文件===================\n");
+            FileUtil.showLog(msg);
+            FileUtil.showLog("===================成功写入文件===================\n");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-            XposedBridge.log("写文件时出错，文件未找到 " + e.getMessage());
+            FileUtil.showLog("写文件时出错，文件未找到 " + e.getMessage());
         } catch (IOException e) {
             e.printStackTrace();
-            XposedBridge.log("写文件时出错，IOException " + e.getMessage());
+            FileUtil.showLog("写文件时出错，IOException " + e.getMessage());
         } finally {
             try {
                 if (bw != null)
@@ -50,6 +47,7 @@ public class ConsumeUtil {
                     fos.close();
             } catch (IOException e) {
                 e.printStackTrace();
+                FileUtil.showLog(e.getMessage());
             }
         }
     }
