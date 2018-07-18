@@ -36,7 +36,7 @@ public class ReftWatcher {
         retainedKeys.add(key);
         final KeyedWeakReference reference =
                 new KeyedWeakReference(watchedReference, key, referenceName, queue);
-        XposedBridge.log("本次检测"+referenceName+",key="+reference.key);
+//        XposedBridge.log("本次检测"+referenceName+",key="+reference.key);
         ensureGoneAsync(watchStartNanoTime, reference);
     }
 
@@ -72,23 +72,22 @@ public class ReftWatcher {
             //TODO  发现内存泄露，需要heapDump
 
 
-            XposedBridge.log("HPROF_ATN:"+reference.name+",HPROF_KEY:"+reference.key+",HPROF_VALUE:"+reference.name);
+            FileUtil.showLog("HPROF_ATN:"+reference.name+",HPROF_KEY:"+reference.key+",HPROF_VALUE:"+reference.name);
 
             File file = FileUtil.getHprofFile(reference.name);
-            try {
-                Debug.dumpHprofData(file.getAbsolutePath());
-            } catch (IOException e) {
-                e.printStackTrace();
+            //文件创建失败重新创建
+            if (!file.exists()){
+                file = FileUtil.getHprofFile(reference.name);
             }
-////            File heapDumpFile = heapDumper.dumpHeap();
-//            if (heapDumpFile == RETRY_LATER) {
-//                // Could not dump the heap.
-//                return RETRY;
-//            }
-//            long heapDumpDurationMs = NANOSECONDS.toMillis(System.nanoTime() - startDumpHeap);
-//            heapdumpListener.analyze(
-//                    new HeapDump(heapDumpFile, reference.key, reference.name, excludedRefs, watchDurationMs,
-//                            gcDurationMs, heapDumpDurationMs));
+            if (file.exists()){
+                try {
+                    Debug.dumpHprofData(file.getAbsolutePath());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }else{
+                FileUtil.showLog("HPROF_FILE_NO_EXISTS.hprof文件创建失败，本次生成文件失败");
+            }
         }
         return DONE;
     }

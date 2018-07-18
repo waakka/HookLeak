@@ -5,6 +5,7 @@ import android.app.Application;
 import android.content.Context;
 import android.content.res.Resources;
 import android.text.TextUtils;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.TextView;
@@ -58,6 +59,28 @@ public class MainHook implements IXposedHookLoadPackage {
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
 
+
+
+        findAndHookMethod("android.app.Activity",lpparam.classLoader,
+                "onKeyDown",int.class, KeyEvent.class, new XC_MethodHook(){
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        int keyCode = (int) param.args[0];
+                        FileUtil.showLog("keyCode = " + keyCode + "重置lastClickTime为-1，");
+
+                        lastClickTime = -1;
+
+
+
+                    }
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    }
+                });
+
+
+
+
         //当前curPackageName为空，第一次解析配置文件
         if (TextUtils.isEmpty(curPackageName)){
             FileUtil.showLog("当前curPackageName为空，开始解析配置文件");
@@ -69,14 +92,16 @@ public class MainHook implements IXposedHookLoadPackage {
             FileUtil.showLog("包名不符，配置包名："+ curPackageName +"当前事件包名："+lpparam.packageName);
             configBeen = FileUtil.getConfigBeen();
             curPackageName = configBeen.getPackageName();
-        }else{
+        }
+        else{
             FileUtil.showLog("包名符合，开始hook");
         }
         //经过重新解析配置文件后，包名依然不符合，退出当前事件流
         if (!lpparam.packageName.equalsIgnoreCase(curPackageName)){
             FileUtil.showLog("再次解析后，包名不符，配置包名："+ curPackageName +"当前事件包名："+lpparam.packageName + "退出当前事件流");
             return;
-        }else{
+        }
+        else{
             FileUtil.showLog("再次解析后，包名符合，开始hook");
         }
 
@@ -85,7 +110,7 @@ public class MainHook implements IXposedHookLoadPackage {
                 "onDestroy", new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                        FileUtil.showLog("本次事件===>onDestroy");
+//                        FileUtil.showLog("本次事件===>onDestroy");
 
                         Activity activity = (Activity) param.thisObject;
                         Context context = activity;
@@ -115,26 +140,38 @@ public class MainHook implements IXposedHookLoadPackage {
                 "dispatchTouchEvent", MotionEvent.class,new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                        FileUtil.showLog("本次事件===>dispatchTouchEvent");
+//                        FileUtil.showLog("本次事件===>dispatchTouchEvent");
                         MotionEvent event = (MotionEvent) param.args[0];
                         int action = event.getAction();
-                        switch(action) {
-                            case MotionEvent.ACTION_UP:
+//                        switch(action) {
+//                            case MotionEvent.ACTION_UP:
                                 //默认为常规界面跳转
                                 type = TYPE_NORMAL;
 
                                 //TODO 增加resoureName的判断，如果符合解析的登录button则本次操作为登录操作
                                 View view = (View) param.thisObject;
-
-                                Resources resources = view.getResources();
-                                String resourceName = resources.getResourceName(view.getId());
-                                if (!TextUtils.isEmpty(configBeen.getLoginRecId()) && !TextUtils.isEmpty(resourceName)){
-                                    if (configBeen.getLoginRecId().equalsIgnoreCase(resourceName)){
-                                        FileUtil.showLog("本次操作控件符合登录按钮特征，属登录操作，resourceName = " + resourceName);
-                                        type = TYPE_LOGIN;
-                                        //如果当前操作控件是登录控件，则当前界面是登录界面
-                                        loginActivityName = lastActivityName;
+                                lastClickTime = System.currentTimeMillis();
+                                FileUtil.showLog("dispatchTouchEvent,action=" + action +
+                                        ",view==" + view.getClass().getSimpleName() +
+                                        ",lastClickTime = " + lastClickTime);
+                                try {
+                                    Resources resources = view.getResources();
+                                    String resourceName = resources.getResourceName(view.getId());
+                                    if (!TextUtils.isEmpty(configBeen.getLoginRecId()) && !TextUtils.isEmpty(resourceName)){
+                                        if (configBeen.getLoginRecId().equalsIgnoreCase(resourceName)){
+                                            FileUtil.showLog("本次操作控件符合登录按钮特征，属登录操作，resourceName = " + resourceName);
+                                            if (TextUtils.isEmpty(configBeen.getAccount()) || TextUtils.isEmpty(configBeen.getPassWord())){
+                                                FileUtil.showLog("当前应用无账号或密码，取消登录信息记录");
+                                            }else{
+                                                type = TYPE_LOGIN;
+                                                //如果当前操作控件是登录控件，则当前界面是登录界面
+                                                loginActivityName = lastActivityName;
+                                            }
+                                        }
                                     }
+                                }catch (Exception e){
+                                    e.printStackTrace();
+//                                    FileUtil.showLog("resources获取失败:" + e.getMessage());
                                 }
 
                                 try {
@@ -149,34 +186,41 @@ public class MainHook implements IXposedHookLoadPackage {
                                         if (!TextUtils.isEmpty(configBeen.getLoginDesc()) && text != null){
                                             FileUtil.showLog("本次操作控件符合登录按钮特征，属登录操作，text = " + text);
                                             if (configBeen.getLoginDesc().equalsIgnoreCase(text.toString())){
-                                                type = TYPE_LOGIN;
-                                                //如果当前操作控件是登录控件，则当前界面是登录界面
-                                                loginActivityName = lastActivityName;
+                                                if (TextUtils.isEmpty(configBeen.getAccount()) || TextUtils.isEmpty(configBeen.getPassWord())){
+                                                    FileUtil.showLog("当前应用无账号或密码，取消登录信息记录");
+                                                }else{
+                                                    type = TYPE_LOGIN;
+                                                    //如果当前操作控件是登录控件，则当前界面是登录界面
+                                                    loginActivityName = lastActivityName;
+                                                }
                                             }
                                         }
                                     }
                                 }catch (Exception e){
                                     e.printStackTrace();
-                                    FileUtil.showLog("控件不能强转为TextView:" + e.getMessage());
+//                                    FileUtil.showLog("控件不能强转为TextView:" + e.getMessage());
                                 }
-                                lastClickTime = System.currentTimeMillis();
-                                break;
-                        }
+
+//                                break;
+//                        }
                     }
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     }
                 });
 
+
+
+
+
         findAndHookMethod("android.app.Activity",lpparam.classLoader,
                 "onStart", new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                        FileUtil.showLog("本次事件===>onStart");
+//                        FileUtil.showLog("本次事件===>onStart");
                         Activity activity = (Activity) param.thisObject;
                         String activityName = activity.getClass().getName();
-                        FileUtil.showLog("****************" + ConsumeUtil.getCurTimeStr() + "***"
-                                + activityName+"调用onStart方法 ");
+                        FileUtil.showLog("onStart,activity=" + activityName);
                         // 记录当前时间
                         curTime = System.currentTimeMillis();
                         // 记录当前ActivityName
@@ -195,7 +239,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 consume.setStoptActivity(curActivityName);
                                 consume.setStopTime(curTime);
                                 consume.setType(-1);
-                                FileUtil.showLog("当前界面"+activityName+"发生onStart，未记录点击信息，为back、home等未知操作导致");
+//                                FileUtil.showLog("当前界面"+activityName+"发生onStart，未记录点击信息，为back、home等未知操作导致");
                                 ConsumeUtil.write(consume.toString());
                             }else{
                                 Consume consume = new Consume();
@@ -213,6 +257,10 @@ public class MainHook implements IXposedHookLoadPackage {
                                     consume.setType(TYPE_LOGIN);
                                 }
                                 ConsumeUtil.write(consume.toString());
+                                //判断超时activity并打印
+                                if (curTime - lastClickTime > 5000){
+                                    FileUtil.showLog("本次页面切换超时==>" + curActivityName + ":" + (curTime - lastClickTime));
+                                }
                             }
                             lastActivityName = curActivityName;
                         }

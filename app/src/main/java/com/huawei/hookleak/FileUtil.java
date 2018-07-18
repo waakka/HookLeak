@@ -34,7 +34,9 @@ public class FileUtil {
 
     //解析配置文件
     public static ConfigBeen getConfigBeen(){
-        File file = new File("sdcard/TraverseConfig.txt");
+//        String path = Environment.getExternalStorageDirectory() + "/TraverseConfig.txt";
+        String path = "/data/local/tmp" + "/TraverseConfig.txt";
+        File file = new File(path);
         String configStr = getStrFromFile(file);
         ConfigBeen configBeen = new ConfigBeen();
         if (!TextUtils.isEmpty(configStr)){
@@ -43,6 +45,15 @@ public class FileUtil {
                 configBeen.setPackageName(jsonObject.getString("packageName"));
                 if (!configStr.contains("\"login\":null")){
                     //需要登录
+                    //账号密码信息
+                    JSONObject Obj = jsonObject.getJSONObject("traverse");
+                    configBeen.setAccount(Obj.getString("account"));
+                    configBeen.setPassWord(Obj.getString("password"));
+
+
+
+
+                    //登录配置信息
                     JSONObject loginObj = jsonObject.getJSONObject("login");
                     JSONArray loginCfgObj = loginObj.getJSONArray("loginCfg");
                     for (int i = 0 ; i < loginCfgObj.length() ; i++){

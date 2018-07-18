@@ -5,6 +5,25 @@ public class ConfigBeen {
     private String packageName;
     private String loginRecId;
     private String loginDesc;
+    private String account;
+    private String passWord;
+
+
+    public String getAccount() {
+        return account;
+    }
+
+    public void setAccount(String account) {
+        this.account = account;
+    }
+
+    public String getPassWord() {
+        return passWord;
+    }
+
+    public void setPassWord(String passWord) {
+        this.passWord = passWord;
+    }
 
     public String getPackageName() {
         return packageName;
@@ -36,6 +55,8 @@ public class ConfigBeen {
                 "packageName='" + packageName + '\'' +
                 ", loginRecId='" + loginRecId + '\'' +
                 ", loginDesc='" + loginDesc + '\'' +
+                ", account='" + account + '\'' +
+                ", passWord='" + passWord + '\'' +
                 '}';
     }
 }
