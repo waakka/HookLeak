@@ -9,11 +9,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
@@ -28,6 +31,60 @@ public class FileUtil {
     public static void showLog(String msg){
         XposedBridge.log(msg);
         Log.e(TAG,msg);
+    }
+
+
+    public static long getTimeFromFile(){
+        long result = -1;
+        String path = "/data/local/tmp" + "/ClickTimeTmp.txt";
+        File file = new File(path);
+        if (!file.exists()){
+            file.mkdirs();
+            FileUtil.showLog("创建文件夹成功 file=" + file.getAbsolutePath());
+        }
+        String timegStr = getStrFromFile(file);
+        if (!TextUtils.isEmpty(timegStr)){
+            result = Long.parseLong(timegStr);
+        }
+        FileUtil.showLog("=======lastClickTime = "+timegStr+"成功读取文件=====\n");
+        return result;
+    }
+
+
+    public static void setTimeToFile(long time){
+        String path = "/data/local/tmp" + "/ClickTimeTmp.txt";
+        File file = new File(path);
+        if (!file.exists()){
+            file.mkdirs();
+            FileUtil.showLog("创建文件夹成功 file=" + file.getAbsolutePath());
+        }
+
+        FileOutputStream fos = null;
+        BufferedWriter bw = null;
+
+        try {
+            fos = new FileOutputStream(file,false);
+            bw = new BufferedWriter(new OutputStreamWriter(fos));
+            bw.write(time + "");
+            bw.flush();
+            FileUtil.showLog("=======lastClickTime = "+time+"成功写入文件=====\n");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            FileUtil.showLog("写文件时出错，文件未找到 " + e.getMessage());
+        } catch (IOException e) {
+            e.printStackTrace();
+            FileUtil.showLog("写文件时出错，IOException " + e.getMessage());
+        } finally {
+            try {
+                if (bw != null)
+                    bw.close();
+                if (fos != null)
+                    fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                FileUtil.showLog(e.getMessage());
+            }
+        }
     }
 
 
@@ -50,9 +107,6 @@ public class FileUtil {
                     configBeen.setAccount(Obj.getString("account"));
                     configBeen.setPassWord(Obj.getString("password"));
 
-
-
-
                     //登录配置信息
                     JSONObject loginObj = jsonObject.getJSONObject("login");
                     JSONArray loginCfgObj = loginObj.getJSONArray("loginCfg");
@@ -70,7 +124,7 @@ public class FileUtil {
                         }
                     }
                 }
-                FileUtil.showLog("解析得当前配置文件：" + configBeen.toString());
+//                FileUtil.showLog("解析得当前配置文件：" + configBeen.toString());
             } catch (JSONException e) {
                 e.printStackTrace();
                 FileUtil.showLog(e.getMessage());
