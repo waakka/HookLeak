@@ -54,14 +54,10 @@ public class MainHook implements IXposedHookLoadPackage {
 
 
     private String curPackageName = "";
-    private String lpparamPackageName = "";
 
 
     @Override
-    public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-
-        lpparamPackageName = lpparam.packageName;
-
+    public void handleLoadPackage(final XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
 
 
         findAndHookMethod("android.app.Activity",lpparam.classLoader,
@@ -70,11 +66,9 @@ public class MainHook implements IXposedHookLoadPackage {
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                         int keyCode = (int) param.args[0];
                         FileUtil.showLog("keyCode = " + keyCode + "重置lastClickTime为-1，");
-
                         lastClickTime = -1;
                         //将lastClickTime写入文件
                         FileUtil.setTimeToFile(lastClickTime);
-
                     }
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
@@ -82,25 +76,16 @@ public class MainHook implements IXposedHookLoadPackage {
                 });
 
 
-
-
-
-
-
         findAndHookMethod("android.app.Activity",lpparam.classLoader,
                 "onDestroy", new XC_MethodHook(){
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
 //                        FileUtil.showLog("本次事件===>onDestroy");
-
                         Activity activity = (Activity) param.thisObject;
                         Context context = activity;
                         String activityName = activity.getClass().getName();
-
                         FileUtil.showLog("onDestroy,activityName:" + activityName);
-
                         watcher.watch(context,activityName);
-
                     }
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
@@ -118,22 +103,14 @@ public class MainHook implements IXposedHookLoadPackage {
                     protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                         MotionEvent event = (MotionEvent) param.args[0];
                         int action = event.getAction();
-
                         //默认为常规界面跳转
                         type = TYPE_NORMAL;
-
                         //TODO 增加resoureName的判断，如果符合解析的登录button则本次操作为登录操作
                         View view = (View) param.thisObject;
                         lastClickTime = System.currentTimeMillis();
                         FileUtil.showLog("dispatchTouchEvent,action=" + action +
                                 ",view = " + view.getClass().getSimpleName() +
-                                ",lpparamPackageName = " + lpparamPackageName +
                                 ",lastClickTime = " + lastClickTime);
-
-
-                        if (!isCurApp(lpparamPackageName)){
-                            return;
-                        }
 
                         //将lastClickTime写入文件
                         FileUtil.setTimeToFile(lastClickTime);
@@ -203,11 +180,10 @@ public class MainHook implements IXposedHookLoadPackage {
                         String activityName = activity.getClass().getName();
                         FileUtil.showLog("onStart,activity=" + activityName);
 
-
-                        if (!isCurApp(lpparamPackageName)){
+                        //PackageName不等于配置文件中PackageName，且activityName不包含PackageName时，过滤当前事件
+                        if (!isCurApp(lpparam) && !activityName.contains(configBeen.getPackageName())){
                             return;
                         }
-
 
                         // 记录当前时间
                         curTime = System.currentTimeMillis();
@@ -265,16 +241,16 @@ public class MainHook implements IXposedHookLoadPackage {
     }
 
 
-    public boolean isCurApp(String packageName){
+    public boolean isCurApp(XC_LoadPackage.LoadPackageParam lpparam){
         //当前curPackageName为空，第一次解析配置文件
         if (TextUtils.isEmpty(curPackageName)){
-            FileUtil.showLog("当前curPackageName为空，开始解析配置文件");
+//            FileUtil.showLog("当前curPackageName为空，开始解析配置文件");
             configBeen = FileUtil.getConfigBeen();
             curPackageName = configBeen.getPackageName();
         }
         //包名不符，配置文件可能发生变更，重新解析配置文件
-        if(!packageName.equalsIgnoreCase(curPackageName)){
-            FileUtil.showLog("包名不符，配置包名："+ curPackageName +"当前事件包名："+packageName + "重新解析配置文件");
+        if(!lpparam.packageName.equalsIgnoreCase(curPackageName)){
+            FileUtil.showLog("包名不符，配置包名："+ curPackageName +"当前事件包名："+lpparam.packageName + "重新解析配置文件");
             configBeen = FileUtil.getConfigBeen();
             curPackageName = configBeen.getPackageName();
         }else{
@@ -282,8 +258,8 @@ public class MainHook implements IXposedHookLoadPackage {
             return true;
         }
         //经过重新解析配置文件后，包名依然不符合，退出当前事件流
-        if (!packageName.equalsIgnoreCase(curPackageName)){
-            FileUtil.showLog("再次解析后，包名不符，配置包名："+ curPackageName +"当前事件包名："+packageName + "退出当前事件流");
+        if (!lpparam.packageName.equalsIgnoreCase(curPackageName)){
+            FileUtil.showLog("再次解析后，包名不符，配置包名："+ curPackageName +"当前事件包名："+lpparam.packageName + "退出当前事件流");
             return false;
         }
 //        else{

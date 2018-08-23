@@ -132,9 +132,6 @@ public class FileUtil {
                 e.printStackTrace();
                 FileUtil.showLog(e.getMessage());
             }
-        }else{
-//            configBeen.setPackageName("com.waakka.login");
-//            XposedBridge.log("配置文件为空：" + configBeen.toString());
         }
         return configBeen;
     }
